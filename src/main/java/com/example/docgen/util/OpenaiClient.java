@@ -11,17 +11,17 @@ import java.util.Map;
 @Component
 public class OpenaiClient {
 
-    @Value("${openai.key}")
-    private String openaiKey;
+    @Value("${qwen.key}")
+    private String dashscopeKey;
 
-    private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+    private static final String OPENAI_API_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
 
     private final RestTemplate restTemplate = new RestTemplate();
 
     public String generateExplanation(String codeSnippet) {
-        // 构建 OpenAI 的请求体
+        // 构建请求体，格式与 OpenAI 一致
         Map<String, Object> request = Map.of(
-                "model", "gpt-3.5-turbo",
+                "model", "qwen-plus",  // 阿里千问模型
                 "messages", List.of(
                         Map.of("role", "system", "content", "你是一个经验丰富的软件工程师，请用简洁自然的语言解释以下代码："),
                         Map.of("role", "user", "content", codeSnippet)
@@ -30,7 +30,7 @@ public class OpenaiClient {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(openaiKey);
+        headers.setBearerAuth(dashscopeKey); // 这里传的是阿里的 key
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
 
@@ -44,9 +44,17 @@ public class OpenaiClient {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            return "调用 OpenAI 接口失败：" + e.getMessage();
+            return "调用 Qwen 接口失败：" + e.getMessage();
         }
 
-        return "OpenAI 无响应。";
+        System.out.println(">>> 请求体: " + entity);
+        System.out.println(">>> 请求 URL: " + OPENAI_API_URL);
+        System.out.println(">>> 请求 headers: " + headers);
+
+        ResponseEntity<Map> response = restTemplate.postForEntity(OPENAI_API_URL, entity, Map.class);
+        System.out.println(">>> 响应状态: " + response.getStatusCode());
+        System.out.println(">>> 响应体: " + response.getBody());
+
+        return "Qwen 无响应。";
     }
 }

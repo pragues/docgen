@@ -16,7 +16,7 @@ import java.time.Duration;
 public class CodeSearchService {
 
     @Autowired
-    private GithubApiClient gitHubApiClient;
+    private GithubApiClient githubApiClient;
 
     @Autowired
     private OpenaiClient openaiClient;
@@ -28,20 +28,37 @@ public class CodeSearchService {
     private RedisTemplate<String, SearchResult> redisTemplate;
 
     public SearchResult searchAndGenerateDoc(String keyword) {
-        // 优先从 Redis 获取
+        // 先从 Redis 获取缓存，如果没有则从 GitHub 和 OpenAI 获取
         String cacheKey = "search:" + keyword;
-        SearchResult cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) return cached;
+        SearchResult cached = null;
+        try {
+            cached = redisTemplate.opsForValue().get(cacheKey);
+        } catch (Exception e) {
+            System.out.println("Redis 连接失败，使用默认逻辑：" + e.getMessage());
+        }
+
+        if (cached != null) {
+            return cached;
+        }
 
         // 调用 GitHub 搜索代码
-        SearchResult searchResult = gitHubApiClient.searchCodeSnippet(keyword);
+        SearchResult result = githubApiClient.searchCodeSnippet(keyword);
 
-        // 调用 LLM 生成解释
-        String explanation = llmService.generateExplanation(searchResult.getCodeSnippet());
+        // 调用 OpenAI 生成解释
+        String doc = "【代码解释功能未启用】";
+        //doc=llmService.generateExplanation(result.getCodeSnippet());
 
-        searchResult.setExplanation(explanation);
-        redisTemplate.opsForValue().set(cacheKey, searchResult, Duration.ofHours(1));
+        result.setExplanation(doc);
 
-        return searchResult;
+        // 尝试将结果缓存到 Redis
+        try {
+            if (redisTemplate != null) {
+                redisTemplate.opsForValue().set(cacheKey, result, Duration.ofHours(1));
+            }
+        } catch (Exception e) {
+            System.out.println("Redis 缓存失败：" + e.getMessage());
+        }
+
+        return result;
     }
 }

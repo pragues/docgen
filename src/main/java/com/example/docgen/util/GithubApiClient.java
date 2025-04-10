@@ -1,6 +1,7 @@
 package com.example.docgen.util;
 
 import com.example.docgen.model.SearchResult;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -13,7 +14,9 @@ import java.util.*;
 public class GithubApiClient {
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private static final String TOKEN = "YOUR_GITHUB_TOKEN";
+
+    @Value("${github.token}")
+    private String TOKEN;
     private static final String BASE_URL = "https://api.github.com/search/code";
 
     public SearchResult searchCodeSnippet(String keyword) {
@@ -78,15 +81,30 @@ public class GithubApiClient {
 
     private String getFileContent(String owner, String repo, String path) {
         String url = String.format("https://api.github.com/repos/%s/%s/contents/%s", owner, repo, path);
+
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(TOKEN);
         headers.set("Accept", "application/vnd.github.v3+json");
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
-        ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
-        if (response.getStatusCode().is2xxSuccessful()) {
-            String encodedContent = (String) response.getBody().get("content");
-            return new String(Base64.getDecoder().decode(encodedContent));
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+            //System.out.println("GitHub Content API response: " + response.getBody());
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Object contentObj = response.getBody().get("content");
+                if (contentObj != null && contentObj instanceof String) {
+                    String encodedContent = (String) contentObj;
+                    // 有些 content 结尾可能有换行符，要去除
+                    encodedContent = encodedContent.replaceAll("\n", "").trim();
+                    return new String(Base64.getDecoder().decode(encodedContent));
+                } else {
+                    return "无法获取文件内容：返回内容不包含合法的 content 字段。";
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "无法获取文件内容：" + e.getMessage();
         }
 
         return "无法获取文件内容。";

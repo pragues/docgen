@@ -26,7 +26,7 @@ public class LLMService {
         Map<String, Object> request = Map.of(
                 "model", "qwen-plus", // 阿里千问的模型名
                 "messages", List.of(
-                        Map.of("role", "system", "content", "你是一个资深程序员，请解释下面的相关的搜索结果"),
+                        Map.of("role", "system", "content", "你是一个资深程序员，请解释下面的相关的搜索结果, 用英文，500字以内"),
                         Map.of("role", "user", "content", codeSnippet)
                 )
         );

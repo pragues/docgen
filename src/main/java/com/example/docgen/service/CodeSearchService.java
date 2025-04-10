@@ -45,8 +45,8 @@ public class CodeSearchService {
         SearchResult result = githubApiClient.searchCodeSnippet(keyword);
 
         // 调用 OpenAI 生成解释
-        String doc = "【代码解释功能未启用】";
-        //doc=llmService.generateExplanation(result.getCodeSnippet());
+        String doc = "【Summary not implemented yet】";
+        doc=llmService.generateExplanation(result.getCodeSnippet());
 
         result.setExplanation(doc);
 
